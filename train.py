@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 from dataset import dataset, x_data, all_data
-from model import Model
+from model_rethink import Model
 from tqdm import tqdm
 from constants import BATCHSIZE, SEQLEN, VECLEN, DECODER
 from time import time
@@ -16,7 +16,7 @@ next_batch = it.get_next('Xin')
 model = Model(next_batch[0])
 
 if os.path.exists('/Volumes/Space/'):
-    tesorboard_path = '/Volumes/Space/twitter/tensorboard/{}'.format(timestamp)
+    tesorboard_path = '/Volumes/Space/twitter-rethink/tensorboard/{}'.format(timestamp)
 else:
     tesorboard_path = 'tensorboard/{}'.format(timestamp)
 
@@ -32,7 +32,7 @@ scalar_sum_op = tf.summary.merge((
     tf.summary.scalar('Accuracy', model.accuracy),)
 )
 
-save_dir = 'saves/'
+save_dir = 'saves-rethink-quick-lr-no-bias/'
 
 epochs = 10
 iterations = ( 1e6 // SEQLEN // BATCHSIZE) * BATCHSIZE
@@ -42,10 +42,14 @@ first = True
 first_offset = 0
 
 with tf.Session() as sess:
+    fw.add_graph(sess.graph)
     saver = tf.train.Saver()
     latest = tf.train.latest_checkpoint(save_dir)
     sess.run(tf.global_variables_initializer())
-    saver.restore(sess, latest)
+    if latest:
+        saver.restore(sess, latest)
+    
+    first_offset = (sess.run(model.global_step) * BATCHSIZE) % all_data.shape[0]
     for epoch in range(epochs):
         print('Start of epoch {}'.format(epoch))
         try:
@@ -67,12 +71,13 @@ with tf.Session() as sess:
                         step += 1
                         fw.add_summary(s, global_step=gstep)
                         if step == pbar.total//BATCHSIZE//2:
-                            r = np.random.random(size=(1,1,20,))
+                            r = np.random.random(size=(1,20,))
                             sample_len = 255
                             Rin = np.repeat(r, sample_len, axis=-2)
-                            lg = sess.run(model.logits, feed_dict={
-                                model.Rin: Rin,
-                                model.f_Hin: sess.run(model.f.zero_state(dtype=tf.float32, batch_size=1))
+                            lg = sess.run(model.f_Yout, feed_dict={
+                                model.r: r,
+                                model.batchsize: 1,
+                                model.seqlen: sample_len
                             })
                             Ryo = np.argmax(lg[0,:,:], axis=-1)
                             buff = DECODER[Ryo].reshape((-1,))
@@ -83,7 +88,7 @@ with tf.Session() as sess:
 
                         if step == pbar.total//BATCHSIZE:
                             print('Saving...')
-                            sp = saver.save(sess, 'saves/checkpoint', global_step=gstep)
+                            sp = saver.save(sess, os.path.join(save_dir, 'checkpoint'), global_step=gstep)
                             print('\tSaved to {}'.format(sp))
                             break
 
