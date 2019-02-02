@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 from dataset import dataset, x_data, all_data
-from model_rethink import Model
+from model import Model
 from tqdm import tqdm
 from constants import BATCHSIZE, SEQLEN, VECLEN, DECODER
 from time import time
