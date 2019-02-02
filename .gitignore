@@ -4,3 +4,4 @@ data*
 sample_*
 __pycache__/
 creds.json
+income_distribution.py
