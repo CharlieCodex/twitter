@@ -1,0 +1,6 @@
+saves-*/
+tensorboard*/
+data*
+sample_*
+__pycache__/
+creds.json
